@@ -171,14 +171,14 @@ struct linux_fpsimd_context {
 
 typedef struct linux_fpsimd_context *linux_fpregset_t;
 
-// ARM64 Linux general-purpose registers (matches sigcontext layout)
+// ARM64 Linux general-purpose registers (matches struct sigcontext: fault_address comes first)
 struct linux_gregset
 {
+	unsigned long long fault_address;
 	unsigned long long regs[31]; // x0-x30
 	unsigned long long sp;
 	unsigned long long pc;
 	unsigned long long pstate;
-	unsigned long long fault_address;
 };
 
 #endif
@@ -206,10 +206,26 @@ struct linux_ucontext
 	unsigned long uc_flags;
 	struct linux_ucontext* uc_link;
 	struct linux_stack uc_stack;
+#if defined(__aarch64__) || defined(__arm64__)
+	// arm64 puts the signal mask (padded to 1024 bits for future growth) before the mcontext.
+	linux_sigset_t uc_sigmask;
+	unsigned char uc_sigmask_pad[1024 / 8 - sizeof(linux_sigset_t)];
+	struct linux_mcontext uc_mcontext;
+#else
 	struct linux_mcontext uc_mcontext;
 	linux_sigset_t uc_sigmask;
 	// linux_libc_fpstate fpregs_mem;
+#endif
 };
+
+#if defined(__aarch64__) || defined(__arm64__)
+// Kernel ABI (arch/arm64/include/uapi/asm/{ucontext,sigcontext}.h); a mismatch here silently
+// corrupts every register read from or written back to a signal frame.
+_Static_assert(__builtin_offsetof(struct linux_ucontext, uc_sigmask) == 40, "linux_ucontext layout");
+_Static_assert(__builtin_offsetof(struct linux_ucontext, uc_mcontext) == 176, "linux_ucontext layout");
+_Static_assert(__builtin_offsetof(struct linux_mcontext, gregs.pc) == 264, "linux sigcontext layout");
+_Static_assert(__builtin_offsetof(struct linux_mcontext, __reserved) == 288, "linux sigcontext layout");
+#endif
 
 #if defined(__aarch64__) || defined(__arm64__)
 struct bsd_exception_state
