@@ -359,7 +359,7 @@ void sigexc_handler(int linux_signum, struct linux_siginfo* info, struct linux_u
 #ifdef __x86_64__
 	kern_printf("sigexc: have RIP 0x%llx\n", ctxt->uc_mcontext.gregs.rip);
 #elif defined(__aarch64__) || defined(__arm64__)
-	if (linux_signum == LINUX_SIGSEGV || linux_signum == LINUX_SIGBUS || linux_signum == LINUX_SIGILL)
+	if (linux_signum == LINUX_SIGSEGV || linux_signum == LINUX_SIGBUS || linux_signum == LINUX_SIGILL || linux_signum == LINUX_SIGTRAP)
 		kern_printf("sigexc: fatal signal %d in PID %d at PC 0x%llx, fault_addr 0x%llx, SP 0x%llx\n",
 			linux_signum, getpid(),
 			(unsigned long long)ctxt->uc_mcontext.gregs.pc,
